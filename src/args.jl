@@ -1,0 +1,3 @@
+module args
+
+end # module
