@@ -26,7 +26,6 @@ function ls(dir::String="")
 end
 
 function main(args::Array{String,1})
-  println(args)
   if length(args) <= 0
     usage()
     return
@@ -34,6 +33,24 @@ function main(args::Array{String,1})
   cmd = args[1]
 
   println("cmd=$cmd")
+end
+
+function usage()
+  println("Usage:")
+  println("copy")
+  println("  --from")
+  println("  --to")
+  println("  --recursive")
+  println("  --depth")
+  println()
+  println("move")
+  println("  --from")
+  println("  --to")
+  println("  --files")
+  println("  --max")
+  println()
+  println("ls")
+  println("  --dir")
 end
 
 main(convert(Array{String,1}, ARGS))
