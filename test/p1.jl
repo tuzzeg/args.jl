@@ -1,12 +1,12 @@
 using Base.Test
 
-abstract Parser{T}
+abstract Updater{T}
 
-immutable StructParser{T} <: Parser{T}
+immutable StructUpdater{T} <: Updater{T}
   sym::Symbol
 end
 
-function update!{R, T<:String}(o::R, p::Parser{R}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::Updater{R}, args::Array{T,1})
   unparsed = Array{T,1}
   i_arg = 1
   consumed = 0
@@ -30,21 +30,21 @@ function update!{R, T<:String}(o::R, p::Parser{R}, args::Array{T,1})
   return unparsed
 end
 
-valency(::StructParser{String}) = 1
-valency(::StructParser{Int}) = 1
-valency(::StructParser{Bool}) = 0
+valency(::StructUpdater{String}) = 1
+valency(::StructUpdater{Int}) = 1
+valency(::StructUpdater{Bool}) = 0
 
-function update!{R, T<:String}(o::R, p::StructParser{String}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructUpdater{String}, args::Array{T,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, args[2])
 end
 
-function update!{R, T<:String}(o::R, p::StructParser{Int}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructUpdater{Int}, args::Array{T,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, int(args[2]))
 end
 
-function update!{R, T<:String}(o::R, p::StructParser{Bool}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructUpdater{Bool}, args::Array{T,1})
   @assert 1 == length(args)
   setfield!(o, p.sym, true)
 end
@@ -67,16 +67,16 @@ type MoveArgs
   MoveArgs() = new("", "", false)
 end
 
-immutable MoveParser <: Parser{MoveArgs}
+immutable MoveUpdater <: Updater{MoveArgs}
 end
 
-function parser(p::MoveParser, arg::String)
+function parser(p::MoveUpdater, arg::String)
   if arg == "--from"
-    StructParser{String}(:from)
+    StructUpdater{String}(:from)
   elseif arg == "--to"
-    StructParser{String}(:to)
+    StructUpdater{String}(:to)
   elseif arg == "-r" || arg == "--recursive"
-    StructParser{Bool}(:recursive)
+    StructUpdater{Bool}(:recursive)
   else
     nothing
   end
@@ -86,7 +86,7 @@ end
 function parse_args()
   args = String["--from", "/path/from", "--to", "/path/to", "-r"]
   o = MoveArgs()
-  p = MoveParser()
+  p = MoveUpdater()
   args1 = update!(o, p, args)
 
   @test "/path/from" == o.from
