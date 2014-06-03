@@ -1,37 +1,10 @@
 using Base.Test
 
-# move --from=/path/from --to /path/to -r
-# move(from="/path/from", to="/path/to")
-type MoveArgs
-  from::String
-  to::String
-  recursive::Bool
-  MoveArgs() = new("", "", false)
-end
-
 abstract Parser{T}
 
-immutable MoveParser <: Parser{MoveArgs}
-end
-
-immutable StringParser <: Parser{String}
+immutable StructParser{T} <: Parser{T}
   sym::Symbol
 end
-
-immutable IntParser <: Parser{Int}
-  sym::Symbol
-end
-
-immutable BoolParser <: Parser{Bool}
-  sym::Symbol
-end
-
-# ls --dir=/path/ls
-# ls(dir="/path/ls")
-
-# conf{from="/path/from", to="/path/to"}
-# move -c conf
-# move(from="/path/from", to="/path/to")
 
 function update!{R, T<:String}(o::R, p::Parser{R}, args::Array{T,1})
   unparsed = Array{T,1}
@@ -57,36 +30,58 @@ function update!{R, T<:String}(o::R, p::Parser{R}, args::Array{T,1})
   return unparsed
 end
 
-function parser(p::MoveParser, arg::String)
-  if arg == "--from"
-    StringParser(:from)
-  elseif arg == "--to"
-    StringParser(:to)
-  elseif arg == "-r" || arg == "--recursive"
-    BoolParser(:recursive)
-  else
-    nothing
-  end
-end
+valency(::StructParser{String}) = 1
+valency(::StructParser{Int}) = 1
+valency(::StructParser{Bool}) = 0
 
-valency(::StringParser) = 1
-valency(::IntParser) = 1
-valency(::BoolParser) = 0
-
-function update!{R, T<:String}(o::R, p::Parser{String}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructParser{String}, args::Array{T,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, args[2])
 end
 
-function update!{R, T<:String}(o::R, p::Parser{Int}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructParser{Int}, args::Array{T,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, int(args[2]))
 end
 
-function update!{R, T<:String}(o::R, p::Parser{Bool}, args::Array{T,1})
+function update!{R, T<:String}(o::R, p::StructParser{Bool}, args::Array{T,1})
   @assert 1 == length(args)
   setfield!(o, p.sym, true)
 end
+
+# ls --dir=/path/ls
+# ls(dir="/path/ls")
+
+# conf{from="/path/from", to="/path/to"}
+# move -c conf
+# move(from="/path/from", to="/path/to")
+
+
+# move --from=/path/from --to /path/to -r
+# move(from="/path/from", to="/path/to")
+# { generated: Move specific
+type MoveArgs
+  from::String
+  to::String
+  recursive::Bool
+  MoveArgs() = new("", "", false)
+end
+
+immutable MoveParser <: Parser{MoveArgs}
+end
+
+function parser(p::MoveParser, arg::String)
+  if arg == "--from"
+    StructParser{String}(:from)
+  elseif arg == "--to"
+    StructParser{String}(:to)
+  elseif arg == "-r" || arg == "--recursive"
+    StructParser{Bool}(:recursive)
+  else
+    nothing
+  end
+end
+# }
 
 function parse_args()
   args = String["--from", "/path/from", "--to", "/path/to", "-r"]
