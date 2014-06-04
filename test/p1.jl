@@ -8,11 +8,6 @@ end
 
 abstract Updater{T}
 
-immutable CommandUpdater <: Updater{CommandArgs}
-end
-
-updater(::CommandArgs) = CommandUpdater()
-
 immutable StructUpdater{T} <: Updater{T}
   sym::Symbol
 end
@@ -93,15 +88,18 @@ function update!{R}(o::R, p::StructUpdater{Bool}, args::Array{String,1})
 end
 
 # ls --dir=/path/ls
-# ls(dir="/path/ls")
+ls(dir="/path/ls") = "ls dir=$dir"
+
 # { generated: ls specific
 type LsArgs
   dir::String
   LsArgs() = new("")
 end
 
+ls(o::LsArgs) = ls(o.dir)
+
 function parser(p::LsArgs, arg::String)
-  if arg == "--dir"
+  if arg == "--dir" || arg == "-d"
     StructUpdater{String}(:dir)
   else
     nothing
@@ -115,7 +113,10 @@ end
 
 
 # move --from=/path/from --to /path/to -r
-# move(from="/path/from", to="/path/to")
+function move(from::String, to::String, recursive::Bool=false)
+  "move from=$from to=$to r=$recursive"
+end
+
 # { generated: Move specific
 type MoveArgs
   from::String
@@ -123,6 +124,8 @@ type MoveArgs
   recursive::Bool
   MoveArgs() = new("", "", false)
 end
+
+move(o::MoveArgs) = move(o.from, o.to, o.recursive)
 
 function parser(p::MoveArgs, arg::String)
   if arg == "--from"
@@ -177,8 +180,31 @@ function parse_commands_ls()
   @test "/path/a" == o.args.dir
 end
 
+function call_command_ls()
+  args = String["ls", "--dir=/path/a"]
+  o = CommandArgs()
+  args1 = update!(o, args)
+
+  @assert "ls dir=/path/a" == call(o)
+end
+
+function call_command_move()
+  args = String["move", "--from=/path/from", "--to", "/path/to"]
+  o = CommandArgs()
+  args1 = update!(o, args)
+
+  @assert "move from=/path/from to=/path/to r=false" == call(o)
+end
+
+function call(o::CommandArgs)
+  @eval $(o.sym)($(o.args))
+end
+
 parse_args()
 parse_args1()
 
 parse_commands_move()
 parse_commands_ls()
+
+call_command_ls()
+call_command_move()
