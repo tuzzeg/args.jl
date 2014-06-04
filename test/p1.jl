@@ -17,7 +17,7 @@ immutable StructUpdater{T} <: Updater{T}
   sym::Symbol
 end
 
-function update!(o::CommandArgs, p::CommandUpdater, args::Array{String,1})
+function update!(o::CommandArgs, args::Array{String,1})
   if length(args) < 1
     throw(ParseException("Expected command, args=$(args)"))
   end
@@ -25,17 +25,17 @@ function update!(o::CommandArgs, p::CommandUpdater, args::Array{String,1})
   if cmd == "move"
     o.sym = :move
     o.args = MoveArgs()
-    update!(o.args, updater(o.args), args)
+    update!(o.args, args)
   elseif cmd == "ls"
     o.sym = :ls
     o.args = LsArgs()
-    update!(o.args, updater(o.args), args)
+    update!(o.args, args)
   else
     throw(ParseError("Unexpected command [$cmd]"))
   end
 end
 
-function update!{R}(o::R, p::Updater{R}, args::Array{String,1})
+function update!{R}(o::R, args::Array{String,1})
   unparsed = Array{String,1}
   i_arg = 1
   consumed = 0
@@ -44,14 +44,14 @@ function update!{R}(o::R, p::Updater{R}, args::Array{String,1})
     if beginswith(arg, "-")
       args_split = split(arg, "=", 2)
       if length(args_split) == 1
-        p_arg = parser(p, arg)
+        p_arg = parser(o, arg)
         if !isa(p_arg, Nothing)
           v = valency(p_arg)
           consumed = 1+v
           update_args = args[i_arg:i_arg+v]
         end
       else
-        p_arg = parser(p, args_split[1])
+        p_arg = parser(o, args_split[1])
         if !isa(p_arg, Nothing)
           v = valency(p_arg)
           if v != 1
@@ -100,12 +100,7 @@ type LsArgs
   LsArgs() = new("")
 end
 
-immutable LsUpdater <: Updater{LsArgs}
-end
-
-updater(::LsArgs) = LsUpdater()
-
-function parser(p::LsUpdater, arg::String)
+function parser(p::LsArgs, arg::String)
   if arg == "--dir"
     StructUpdater{String}(:dir)
   else
@@ -129,12 +124,7 @@ type MoveArgs
   MoveArgs() = new("", "", false)
 end
 
-immutable MoveUpdater <: Updater{MoveArgs}
-end
-
-updater(::MoveArgs) = MoveUpdater()
-
-function parser(p::MoveUpdater, arg::String)
+function parser(p::MoveArgs, arg::String)
   if arg == "--from"
     StructUpdater{String}(:from)
   elseif arg == "--to"
@@ -150,8 +140,7 @@ end
 function parse_args()
   args = String["--from", "/path/from", "--to", "/path/to", "-r"]
   o = MoveArgs()
-  p = updater(o)
-  args1 = update!(o, p, args)
+  args1 = update!(o, args)
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
@@ -161,8 +150,7 @@ end
 function parse_args1()
   args = String["--from=/path/from", "--to", "/path/to", "-r"]
   o = MoveArgs()
-  p = updater(o)
-  args1 = update!(o, p, args)
+  args1 = update!(o, args)
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
@@ -172,8 +160,7 @@ end
 function parse_commands_move()
   args = String["move", "--from=/path/from", "--to", "/path/to"]
   o = CommandArgs()
-  p = updater(o)
-  args1 = update!(o, p, args)
+  args1 = update!(o, args)
 
   @test :move == o.sym
   @test "/path/from" == o.args.from
@@ -184,8 +171,7 @@ end
 function parse_commands_ls()
   args = String["ls", "--dir=/path/a"]
   o = CommandArgs()
-  p = updater(o)
-  args1 = update!(o, p, args)
+  args1 = update!(o, args)
 
   @test :ls == o.sym
   @test "/path/a" == o.args.dir
