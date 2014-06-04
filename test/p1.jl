@@ -1,13 +1,42 @@
 using Base.Test
 
+type CommandArgs
+  sym::Symbol
+  args
+  CommandArgs() = new()
+end
+
 abstract Updater{T}
+
+immutable CommandUpdater <: Updater{CommandArgs}
+end
+
+updater(::CommandArgs) = CommandUpdater()
 
 immutable StructUpdater{T} <: Updater{T}
   sym::Symbol
 end
 
-function update!{R, T<:String}(o::R, p::Updater{R}, args::Array{T,1})
-  unparsed = Array{T,1}
+function update!(o::CommandArgs, p::CommandUpdater, args::Array{String,1})
+  if length(args) < 1
+    throw(ParseException("Expected command, args=$(args)"))
+  end
+  cmd, args = args[1], args[2:end]
+  if cmd == "move"
+    o.sym = :move
+    o.args = MoveArgs()
+    update!(o.args, updater(o.args), args)
+  elseif cmd == "ls"
+    o.sym = :ls
+    o.args = LsArgs()
+    update!(o.args, updater(o.args), args)
+  else
+    throw(ParseError("Unexpected command [$cmd]"))
+  end
+end
+
+function update!{R}(o::R, p::Updater{R}, args::Array{String,1})
+  unparsed = Array{String,1}
   i_arg = 1
   consumed = 0
   while i_arg <= length(args)
@@ -32,7 +61,7 @@ function update!{R, T<:String}(o::R, p::Updater{R}, args::Array{T,1})
           update_args = args_split
         end
       end
-      update!(o, p_arg, update_args)
+      update!(o, p_arg, convert(Array{String,1}, update_args))
     end
     if 0 < consumed
       i_arg += consumed
@@ -48,23 +77,42 @@ valency(::StructUpdater{String}) = 1
 valency(::StructUpdater{Int}) = 1
 valency(::StructUpdater{Bool}) = 0
 
-function update!{R, T<:String}(o::R, p::StructUpdater{String}, args::Array{T,1})
+function update!{R}(o::R, p::StructUpdater{String}, args::Array{String,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, args[2])
 end
 
-function update!{R, T<:String}(o::R, p::StructUpdater{Int}, args::Array{T,1})
+function update!{R}(o::R, p::StructUpdater{Int}, args::Array{String,1})
   @assert 2 == length(args)
   setfield!(o, p.sym, int(args[2]))
 end
 
-function update!{R, T<:String}(o::R, p::StructUpdater{Bool}, args::Array{T,1})
+function update!{R}(o::R, p::StructUpdater{Bool}, args::Array{String,1})
   @assert 1 == length(args)
   setfield!(o, p.sym, true)
 end
 
 # ls --dir=/path/ls
 # ls(dir="/path/ls")
+# { generated: ls specific
+type LsArgs
+  dir::String
+  LsArgs() = new("")
+end
+
+immutable LsUpdater <: Updater{LsArgs}
+end
+
+updater(::LsArgs) = LsUpdater()
+
+function parser(p::LsUpdater, arg::String)
+  if arg == "--dir"
+    StructUpdater{String}(:dir)
+  else
+    nothing
+  end
+end
+# }
 
 # conf{from="/path/from", to="/path/to"}
 # move -c conf
@@ -84,6 +132,8 @@ end
 immutable MoveUpdater <: Updater{MoveArgs}
 end
 
+updater(::MoveArgs) = MoveUpdater()
+
 function parser(p::MoveUpdater, arg::String)
   if arg == "--from"
     StructUpdater{String}(:from)
@@ -100,7 +150,7 @@ end
 function parse_args()
   args = String["--from", "/path/from", "--to", "/path/to", "-r"]
   o = MoveArgs()
-  p = MoveUpdater()
+  p = updater(o)
   args1 = update!(o, p, args)
 
   @test "/path/from" == o.from
@@ -111,7 +161,7 @@ end
 function parse_args1()
   args = String["--from=/path/from", "--to", "/path/to", "-r"]
   o = MoveArgs()
-  p = MoveUpdater()
+  p = updater(o)
   args1 = update!(o, p, args)
 
   @test "/path/from" == o.from
@@ -119,5 +169,30 @@ function parse_args1()
   @test o.recursive
 end
 
+function parse_commands_move()
+  args = String["move", "--from=/path/from", "--to", "/path/to"]
+  o = CommandArgs()
+  p = updater(o)
+  args1 = update!(o, p, args)
+
+  @test :move == o.sym
+  @test "/path/from" == o.args.from
+  @test "/path/to" == o.args.to
+  @test !o.args.recursive
+end
+
+function parse_commands_ls()
+  args = String["ls", "--dir=/path/a"]
+  o = CommandArgs()
+  p = updater(o)
+  args1 = update!(o, p, args)
+
+  @test :ls == o.sym
+  @test "/path/a" == o.args.dir
+end
+
 parse_args()
 parse_args1()
+
+parse_commands_move()
+parse_commands_ls()
