@@ -77,6 +77,14 @@ function call_command_move()
   @assert "move from=/path/from to=/path/to r=false" == call(o)
 end
 
+function call_command_move_insufficient()
+  args = String["move", "--from=/path/from"]
+  o = CommandArgs()
+  args1 = update!(o, args)
+
+  @assert "move from=/path/from to= r=false" == call(o)
+end
+
 parse_args()
 parse_args1()
 
@@ -85,3 +93,5 @@ parse_commands_ls()
 
 call_command_ls()
 call_command_move()
+
+call_command_move_insufficient()
