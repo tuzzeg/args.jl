@@ -1,7 +1,7 @@
 using Base.Test
 
 require("src/args.jl")
-import args: CommandArgs, StructUpdater, update!, parser
+import args: CommandArgs, StructUpdater, update!, parser, call
 
 # ls --dir=/path/ls
 ls(dir="/path/ls") = "ls dir=$dir"
@@ -64,11 +64,11 @@ function update!(o::CommandArgs, args::Array{String,1})
   end
   cmd, args = args[1], args[2:end]
   if cmd == "move"
-    o.sym = :move
+    o.action = move
     o.args = _move_args()
     update!(o.args, args)
   elseif cmd == "ls"
-    o.sym = :ls
+    o.action = ls
     o.args = _ls_args()
     update!(o.args, args)
   else
@@ -104,7 +104,6 @@ function parse_commands_move()
   o = CommandArgs()
   args1 = update!(o, args)
 
-  @test :move == o.sym
   @test "/path/from" == o.args.from
   @test "/path/to" == o.args.to
   @test !o.args.recursive
@@ -115,7 +114,6 @@ function parse_commands_ls()
   o = CommandArgs()
   args1 = update!(o, args)
 
-  @test :ls == o.sym
   @test "/path/a" == o.args.dir
 end
 
@@ -133,10 +131,6 @@ function call_command_move()
   args1 = update!(o, args)
 
   @assert "move from=/path/from to=/path/to r=false" == call(o)
-end
-
-function call(o::CommandArgs)
-  @eval $(o.sym)($(o.args))
 end
 
 parse_args()

@@ -1,3 +1,4 @@
 using Base.Test
 
-@assert 1 == 0
+require("test/parser_raw.jl")
+require("test/parser_macro.jl")
