@@ -3,7 +3,7 @@ module args
 export
   @args, @main, Arg,
   CommandArgs, StructUpdater,
-  upadte!, parser, call
+  upadte!, parser, call, main
 
 immutable Arg{T}
   sym::Symbol
