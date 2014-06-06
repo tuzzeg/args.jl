@@ -17,7 +17,7 @@ end
 
 argtype{T}(::Arg{T}) = T
 
-macro args(func::Symbol, arg_exprs...)
+macro args(func::Symbol, arg_exprs::Arg...)
   local args_t = symbol("_$(func)_args")
   local args = [eval(expr) for expr in arg_exprs]
 
