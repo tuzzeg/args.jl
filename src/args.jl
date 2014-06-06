@@ -1,7 +1,7 @@
 module args
 
 export
-  @args, Arg,
+  @args, @main, Arg,
   CommandArgs, StructUpdater,
   upadte!, parser, call
 
@@ -24,7 +24,9 @@ macro args(func::Symbol, arg_exprs...)
   local t_members = {:($(a.sym)::$(argtype(a))) for a in args}
   local t_defaults = {a.default for a in args}
   local f_args = {:(o.$(a.sym)) for a in args}
-  local p_ifs = gen_switch([(match_expr(a), :(StructUpdater{$(argtype(a))}($(Expr(:quote, a.sym))))) for a in args])
+  local p_ifs = gen_switch(
+    [(match_expr(a), :(StructUpdater{$(argtype(a))}($(Expr(:quote, a.sym))))) for a in args],
+    quote nothing end)
 
   gen = quote
     type $args_t
@@ -41,6 +43,41 @@ macro args(func::Symbol, arg_exprs...)
   esc(gen)
 end
 
+macro main(functions::Symbol...)
+#  if cmd == "move"
+#    o.action = move
+#    o.args = _move_args()
+#    update!(o.args, args)
+  function _check(func)
+    f_name = string(func)
+    :(cmd == $(f_name))
+  end
+  function _case(func)
+    f_typ = symbol("_$(string(func))_args")
+    quote
+      o.action = $func
+      o.args = $f_typ()
+      update!(o.args, args)
+    end
+  end
+  local switch_cases = (Expr, Expr)[(_check(func), _case(func)) for func in functions]
+  local switch_default = quote
+    throw(ParseError("Unexpected command []"))
+  end
+  local switch = gen_switch(switch_cases, switch_default)
+
+  gen = quote
+    function update!(o::CommandArgs, args::Array{String,1})
+      if length(args) < 1
+        throw(ParseException("Expected command, args=$(args)"))
+      end
+      cmd, args = args[1], args[2:end]
+      $switch
+    end
+  end
+  esc(gen)
+end
+
 function match_expr(a::Arg)
   if isempty(a.short)
     :(arg == $(a.long))
@@ -49,14 +86,13 @@ function match_expr(a::Arg)
   end
 end
 
-function gen_switch(cases::Array{(Expr,Expr),1}, offset=0)
-  head = quote
-    nothing
-  end
+function gen_switch(cases::Array{(Expr,Expr),1}, default::Expr)
+  head = quote nothing end
   last = head
   for (cond, res) in cases
     last = push_last!(last, :($cond ? $res : nothing))
   end
+  # TODO push default to last statement
   head
 end
 

@@ -1,7 +1,7 @@
 using Base.Test
 
 require("src/args.jl")
-import args: @args, Arg, CommandArgs, StructUpdater, update!, parser, call
+import args: @args, @main, Arg, CommandArgs, StructUpdater, update!, parser, call
 
 # ls --dir=/path/ls
 @args(ls,
@@ -19,27 +19,7 @@ function move(from::String, to::String, recursive::Bool=false)
   "move from=$from to=$to r=$recursive"
 end
 
-# { generated: main
-
-function update!(o::CommandArgs, args::Array{String,1})
-  if length(args) < 1
-    throw(ParseException("Expected command, args=$(args)"))
-  end
-  cmd, args = args[1], args[2:end]
-  if cmd == "move"
-    o.action = move
-    o.args = _move_args()
-    update!(o.args, args)
-  elseif cmd == "ls"
-    o.action = ls
-    o.args = _ls_args()
-    update!(o.args, args)
-  else
-    throw(ParseError("Unexpected command [$cmd]"))
-  end
-end
-
-# }
+@main(ls, move)
 
 function parse_args()
   args = String["--from", "/path/from", "--to", "/path/to", "-r"]
