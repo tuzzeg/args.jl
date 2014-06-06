@@ -25,7 +25,7 @@ macro args(func::Symbol, arg_exprs...)
   local t_defaults = {a.default for a in args}
   local f_args = {:(o.$(a.sym)) for a in args}
   local p_ifs = gen_switch(
-    [(match_expr(a), :(StructUpdater{$(argtype(a))}($(Expr(:quote, a.sym))))) for a in args],
+    [(match_expr(a), :(args.StructUpdater{$(argtype(a))}($(Expr(:quote, a.sym))))) for a in args],
     quote nothing end)
 
   gen = quote
@@ -36,7 +36,7 @@ macro args(func::Symbol, arg_exprs...)
 
     $func(o::$args_t) = $func($(f_args...))
 
-    function parser(p::$args_t, arg::String)
+    function args.parser(p::$args_t, arg::String)
       $p_ifs
     end
   end
