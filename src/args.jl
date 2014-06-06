@@ -3,7 +3,7 @@ module args
 export
   @args, @main, Arg,
   CommandArgs, StructUpdater,
-  upadte!, parser, call, main
+  update!, parser, call, main
 
 immutable Arg{T}
   sym::Symbol
@@ -53,7 +53,7 @@ macro main(functions::Symbol...)
     quote
       o.action = $func
       o.args = $f_typ()
-      update!(o.args, args)
+      args.update!(o.args, _args)
     end
   end
   local switch_cases = (Expr, Expr)[(_check(func), _case(func)) for func in functions]
@@ -63,11 +63,11 @@ macro main(functions::Symbol...)
   local switch = gen_switch(switch_cases, switch_default)
 
   gen = quote
-    function update!(o::CommandArgs, args::Array{String,1})
-      if length(args) < 1
-        throw(ParseException("Expected command, args=$(args)"))
+    function args.update!(o::CommandArgs, _args::Array{String,1})
+      if length(_args) < 1
+        throw(ParseException("Expected command, args=$(_args)"))
       end
-      cmd, args = args[1], args[2:end]
+      cmd, _args = _args[1], _args[2:end]
       $switch
     end
   end
@@ -121,12 +121,12 @@ end
 
 parser(o, ::String) = throw(ParseError("Not supported type [$(typeof(o))]"))
 
-function update!{R}(o::R, args::Array{String,1})
+function update!{R}(o::R, _args::Array{String,1})
   unparsed = Array{String,1}
   i_arg = 1
   consumed = 0
-  while i_arg <= length(args)
-    arg = args[i_arg]
+  while i_arg <= length(_args)
+    arg = _args[i_arg]
     if beginswith(arg, "-")
       args_split = split(arg, "=", 2)
       if length(args_split) == 1
@@ -134,7 +134,7 @@ function update!{R}(o::R, args::Array{String,1})
         if !isa(p_arg, Nothing)
           v = valency(p_arg)
           consumed = 1+v
-          update_args = args[i_arg:i_arg+v]
+          update_args = _args[i_arg:i_arg+v]
         end
       else
         p_arg = parser(o, args_split[1])
@@ -147,12 +147,12 @@ function update!{R}(o::R, args::Array{String,1})
           update_args = args_split
         end
       end
-      update!(o, p_arg, convert(Array{String,1}, update_args))
+      args.update!(o, p_arg, convert(Array{String,1}, update_args))
     end
     if 0 < consumed
       i_arg += consumed
     else
-      push!(unparsed, args[i_arg])
+      # push!(unparsed, _args[i_arg])
       i_arg += 1
     end
   end
@@ -183,8 +183,12 @@ function call(o::CommandArgs)
 end
 
 function main()
+  main(convert(Array{String,1}, ARGS))
+end
+
+function main(_args::Array{String,1})
   o = CommandArgs()
-  update!(o, convert(Array{String,1}, ARGS))
+  args.update!(o, _args)
   call(o)
 end
 
