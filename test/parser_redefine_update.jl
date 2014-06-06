@@ -1,5 +1,5 @@
 require("src/args.jl")
-import args: @args, @main, Arg, CommandArgs, main
+import args: @args, @main, Arg, main
 
 include("m1.jl")
 import m1: update!

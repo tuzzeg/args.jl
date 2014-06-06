@@ -63,7 +63,7 @@ macro main(functions::Symbol...)
   local switch = gen_switch(switch_cases, switch_default)
 
   gen = quote
-    function args.update!(o::CommandArgs, _args::Array{String,1})
+    function args.update!(o::args.CommandArgs, _args::Array{String,1})
       if length(_args) < 1
         throw(ParseException("Expected command, args=$(_args)"))
       end
