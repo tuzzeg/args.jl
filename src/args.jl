@@ -26,7 +26,7 @@ macro args(func::Symbol, arg_exprs...)
   local f_args = {:(o.$(a.sym)) for a in args}
   local p_ifs = gen_switch([(match_expr(a), :(StructUpdater{$(argtype(a))}($(Expr(:quote, a.sym))))) for a in args])
 
-  @eval begin
+  gen = quote
     type $args_t
       $(t_members...)
       $args_t() = new($(t_defaults...))
@@ -38,6 +38,7 @@ macro args(func::Symbol, arg_exprs...)
       $p_ifs
     end
   end
+  esc(gen)
 end
 
 function match_expr(a::Arg)
