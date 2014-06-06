@@ -44,10 +44,6 @@ macro args(func::Symbol, arg_exprs...)
 end
 
 macro main(functions::Symbol...)
-#  if cmd == "move"
-#    o.action = move
-#    o.args = _move_args()
-#    update!(o.args, args)
   function _check(func)
     f_name = string(func)
     :(cmd == $(f_name))
@@ -184,6 +180,12 @@ end
 
 function call(o::CommandArgs)
   @eval $(o.action(o.args))
+end
+
+function main()
+  o = CommandArgs()
+  update!(o, convert(Array{String,1}, ARGS))
+  call(o)
 end
 
 end # module
