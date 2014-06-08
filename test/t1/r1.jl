@@ -9,21 +9,33 @@ require("src/args.jl")
 # Command move
 #    --files
 #    --max
-function move(from::String="", to::String="", files::String="", max::Int=0)
+@command(move,
+  (from::String, long="--from"),
+  (to::String, long="--to"),
+  (files::String="", long="--files"),
+  (max::Int=0, long="--max"),
+begin
   println("move, from=$from to=$to files=$files max=$max")
-end
+end)
 
 # Command copy
 # -r --recursive
 #    --depth
-function copy(from::String="", to::String="", recursive::Bool=false, depth::Int=1)
+@command(copy,
+  (from::String, long="--from"),
+  (to::String, long="--to"),
+  (recursive::Bool=false, long="--files", short="-r"),
+  (depth::Int=1, long="--depth"),
+begin
   println("copy, from=$from to=$to recursive=$recursive depth=$depth")
-end
+end)
 
 # Command ls
-function ls(dir::String="")
+@command(ls,
+  (dir::String, short="-r", long="--dir"),
+begin
   println("ls, dir=$dir")
-end
+end)
 
 function main(args::Array{String,1})
   if length(args) <= 0
@@ -33,24 +45,6 @@ function main(args::Array{String,1})
   cmd = args[1]
 
   println("cmd=$cmd")
-end
-
-function usage()
-  println("Usage:")
-  println("copy")
-  println("  --from")
-  println("  --to")
-  println("  --recursive")
-  println("  --depth")
-  println()
-  println("move")
-  println("  --from")
-  println("  --to")
-  println("  --files")
-  println("  --max")
-  println()
-  println("ls")
-  println("  --dir")
 end
 
 main(convert(Array{String,1}, ARGS))
