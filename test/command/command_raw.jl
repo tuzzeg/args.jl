@@ -46,13 +46,20 @@ end
 # }
 
 function parse_command()
-  args = String["--from", "/path/from", "--to", "/path/to"]
+  args = String["--from", "/path/from", "--to", "/path/to", "-r"]
   o = _mv_args()
   args1 = update!(o, args)
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
-  @test nothing == o.recursive
+  @test o.recursive
+end
+
+function parse_command_no_r()
+  args = String["--from", "/path/from", "--to", "/path/to"]
+  o = _mv_args()
+  @test_throws update!(o, args)
 end
 
 parse_command()
+parse_command_no_r()
