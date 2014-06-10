@@ -27,6 +27,7 @@ immutable StructUpdater{T} <: Updater{T}
 end
 
 parser(o, ::String) = throw(ParseError("Not supported type [$(typeof(o))]"))
+validate(o) = String[]
 
 function update!{R}(o::R, _args::Array{String,1})
   unparsed = Array{String,1}
@@ -62,6 +63,10 @@ function update!{R}(o::R, _args::Array{String,1})
       # push!(unparsed, _args[i_arg])
       i_arg += 1
     end
+  end
+  v_res = validate(o)
+  if !isempty(v_res)
+    throw(ParseError(join(v_res, "; ")))
   end
   return unparsed
 end

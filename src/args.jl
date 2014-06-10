@@ -6,6 +6,6 @@ include("macros.jl")
 export
   @args, @main, Arg,
   CommandArgs, StructUpdater,
-  update!, parser, call, main
+  update!, parser, validate, call, main
 
 end # module
