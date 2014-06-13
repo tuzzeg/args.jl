@@ -1,19 +1,10 @@
 using Base.Test
 
-# require("src/args.jl")
-# import args: StructUpdater, update!, parser, validate
-
 # Runtime {
 parse_string(args::Array{String, 1}) = args[1]
 parse_int(args::Array{String, 1}) = int(args[1])
 parse_bool(args::Array{String, 1}) = true
 # }
-
-# @command(mv,
-#  (from::String, long="--from", required=true), # required
-#  (to::String, long="--to"), # optional
-#  (file::String="file.csv", short="-f", long="--file"), # optional
-#  (recursive::Bool, short="-r", required=true), # required
 
 # { generated: mv
 
