@@ -28,15 +28,15 @@ end)
 #  _mv_args() = new(nothing, nothing, "file.csv", nothing)
 #end
 
-function valency(::Type{_mv_args}, arg::String)
-  if arg in ["--from", "--to", "-f", "--file"]
-    1
-  elseif arg in ["-r", "--recursive"]
-    0
-  else
-    -1
-  end
-end
+#function valency(::Type{_mv_args}, arg::String)
+#  if arg in ["--from", "--to", "-f", "--file"]
+#    1
+#  elseif arg in ["-r", "--recursive"]
+#    0
+#  else
+#    -1
+#  end
+#end
 
 function update!(o::_mv_args, args::Array{String, 1})
   arg, tail = args[1], args[2:end]
@@ -76,13 +76,13 @@ end
 
 empty(::Type{Range}) = Range()
 
-function valency(::Type{Range}, arg::String)
-  if arg in ["--from", "--to"]
-    1
-  else
-    -1
-  end
-end
+#function valency(::Type{Range}, arg::String)
+#  if arg in ["--from", "--to"]
+#    1
+#  else
+#    -1
+#  end
+#end
 
 function update!(o::Range, args::Array{String, 1})
   arg, tail = args[1], args[2:end]
@@ -116,16 +116,16 @@ end)
 #  op::String
 #end
 
-function valency(::Type{_mv1_args}, arg::String)
-  v = -1
-  if arg in ["--op"]
-    1
-  elseif 0 < (v = valency(Range, arg))
-    v
-  else
-    -1
-  end
-end
+#function valency(::Type{_mv1_args}, arg::String)
+#  v = -1
+#  if arg in ["--op"]
+#    1
+#  elseif 0 < (v = valency(Range, arg))
+#    v
+#  else
+#    -1
+#  end
+#end
 
 function update!(o::_mv1_args, args::Array{String, 1})
   arg, tail = args[1], args[2:end]
@@ -170,6 +170,12 @@ function parse_command()
   @test "/path/from" == o.from
   @test "/path/to" == o.to
   @test o.recursive
+
+  @test 1 == valency(o, "--from")
+  @test 1 == valency(o, "--to")
+  @test 1 == valency(o, "-f")
+  @test 0 == valency(o, "-r")
+  @test -1 == valency(o, "--not-exists")
 end
 
 function parse_command_no_r()
@@ -194,6 +200,12 @@ function parse_inner()
   @test "/path/from" == o.range.from
   @test "/path/to" == o.range.to
   @test "op" == o.op
+
+  @test 1 == valency(o, "--from")
+  @test 1 == valency(o, "--to")
+  @test 1 == valency(o, "--op")
+  @test -1 == valency(o, "-r")
+  @test -1 == valency(o, "-f")
 end
 
 parse_command()
@@ -201,6 +213,5 @@ parse_command_no_r()
 
 parse_inner()
 
-# invalid valency: --from --to
-# override: -c conf --conf.inner.str=aaa
-
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa

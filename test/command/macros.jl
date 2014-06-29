@@ -15,17 +15,54 @@ macro command(sym, exprs...)
   local body_expr = exprs[end]
   local args = map(parse_arg, arg_exprs)
 
+  gen = esc(quote
+    $(_gen_argtype(sym, args))
+    $(_gen_valency(sym, args))
+  end)
+  println(gen)
+  gen
+end
+
+# Generate arguments holder type.
+# type _mv_args
+#   from::Union(String, Nothing)
+#   file::String
+#   recursive::Union(Bool, Nothing)
+#  _mv_args() = new(nothing, nothing, "file.csv", nothing)
+# end
+function _gen_argtype(sym, args)
   local t_sym = symbol("_$(sym)_args")
   local t_members = {:($(a.sym)::$(a.typ)) for a in args}
   local t_defaults = {a.default for a in args}
 
-  gen = quote
+  quote
     type $t_sym
       $(t_members...)
       $t_sym() = new($(t_defaults...))
     end
   end
-  esc(gen)
+end
+
+# Generate valency function.
+# valency(::Type, arg::String)
+# which returns number of additional arguments for the given [arg]ument
+function _gen_valency(sym, args)
+  local t_sym = symbol("_$(sym)_args")
+
+  cases = (Expr, Expr)[]
+  for a in args
+    v = _valency(a.typ)
+    if 0 <= v
+      push!(cases, (_match_expr(a), quote $v end))
+    else
+      push!(cases, (:(0 < (v=valency($(a.typ), arg))), quote v end))
+    end
+  end
+  quote
+    function valency(::$t_sym, arg)
+      $(gen_switch(cases, quote -1 end))
+    end
+  end
 end
 
 function parse_arg(expr::Expr)
@@ -36,23 +73,13 @@ function parse_arg(expr::Expr)
   Arg(sym, typ, matches, default)
 end
 
-# Generate valency dict: {0=>["-r"], 1=>["-f", "--from", ...], }
-function valencies(args::Array{Arg, 1})
-  d = Dict{Int, Set{String}}()
-  for a in args
-    matches = get!(d, _valency(a.typ), Set{String}())
-    push!(matches, a.matches...)
-  end
-  d
-end
-
 function _valency(a::Symbol)
   if a == :Bool
     0
   elseif a == :String || a == :Int
     1
   else
-    throw(ArgumentError("Valency not defined for type $a"))
+    -1
   end
 end
 
@@ -61,10 +88,20 @@ function _valency(a::Expr)
     if length(a.args) == 3 && a.args[1] == :Union && a.args[3] == :Nothing
       _valency(a.args[2])
     else
-      throw(ArgumentError("Support Union(type, Nothing) expressions only, but found [$a]"))
+      -1
     end
   else
-    throw(ArgumentError("Support Union expressions only, but found [$a]"))
+    -1
+  end
+end
+
+function _match_expr(a::Arg)
+  if length(a.matches) == 1
+    :(arg == $(a.matches[1]))
+  elseif length(a.matches) == 2
+    :(arg == $(a.matches[1]) || arg == $(a.matches[2]))
+  else
+    throw(ArgumentError("Unsupported matches length [$(a.matches)]"))
   end
 end
 
@@ -111,5 +148,26 @@ function _get_by_key(expr, sym)
 end
 
 empty(x) = nothing
+
+function gen_switch(cases::Array{(Expr,Expr),1}, default)
+  head = quote nothing end
+  last = head
+  for (cond, res) in cases
+    last = push_last!(last, :($cond ? $res : nothing))
+  end
+  # TODO push default to last statement
+  head
+end
+
+# update else clause in if expression with 'expr'
+# return reference to updated if
+function push_last!(if_expr, expr)
+  last = if_expr
+  while isa(last, Expr)
+    last, if_expr = if_expr.args[end], last
+  end
+  if_expr.args[end] = expr
+  if_expr
+end
 
 end # module
