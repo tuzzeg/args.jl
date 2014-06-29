@@ -168,5 +168,5 @@ end
 parse_command()
 parse_command_no_r()
 
-# invalid valency: --from --to
-# override: -c conf --conf.inner.str=aaa
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa

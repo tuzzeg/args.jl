@@ -18,8 +18,8 @@ macro command(sym, exprs...)
   gen = esc(quote
     $(_gen_argtype(sym, args))
     $(_gen_valency(sym, args))
+    $(_gen_update(sym, args))
   end)
-  println(gen)
   gen
 end
 
@@ -55,12 +55,43 @@ function _gen_valency(sym, args)
     if 0 <= v
       push!(cases, (_match_expr(a), quote $v end))
     else
-      push!(cases, (:(0 < (v=valency($(a.typ), arg))), quote v end))
+      push!(cases, (:(0 < (v=valency($(_arg_type(a.typ)), arg))), quote v end))
     end
   end
+
   quote
     function valency(::$t_sym, arg)
-      $(gen_switch(cases, quote -1 end))
+      $(_gen_switch(cases, quote -1 end))
+    end
+  end
+end
+
+# Generate update!(o::_mv_args, args::Array{String, 1})
+function _gen_update(sym, args)
+  local t_sym = symbol("_$(sym)_args")
+
+  cases = (Expr, Expr)[]
+  fallovers = Expr[]
+  for a in args
+    parser = _parser(a.typ)
+    if parser != nothing
+      push!(cases, (_match_expr(a), quote o.$(a.sym) = $(parser)(tail) end))
+    else
+      push!(fallovers, quote updated |= update!(o.$(a.sym), args) end)
+    end
+  end
+
+  last_else = quote
+    updated = false
+    $(fallovers...)
+  end
+
+  quote
+    function update!(o::$(t_sym), args::Array{String, 1})
+      arg, tail = args[1], args[2:end]
+      updated = true
+      $(_gen_switch(cases, last_else))
+      updated
     end
   end
 end
@@ -73,25 +104,43 @@ function parse_arg(expr::Expr)
   Arg(sym, typ, matches, default)
 end
 
-function _valency(a::Symbol)
-  if a == :Bool
+function _valency(typ)
+  t = _arg_type(typ)
+  if t == :Bool
     0
-  elseif a == :String || a == :Int
+  elseif t == :String || t == :Int
     1
   else
     -1
   end
 end
 
-function _valency(a::Expr)
-  if a.head == :call
-    if length(a.args) == 3 && a.args[1] == :Union && a.args[3] == :Nothing
-      _valency(a.args[2])
-    else
-      -1
-    end
+function _parser(typ)
+  t = _arg_type(typ)
+  if t == :Bool
+    :parse_bool
+  elseif t == :String
+    :parse_string
+  elseif t == :Int
+    :parse_int
   else
-    -1
+    nothing
+  end
+end
+
+# Return argument type
+# x::Int -> Int
+# y::Union(String, Nothing) -> String
+# z::Range -> Range
+function _arg_type(a::Symbol)
+  a
+end
+
+function _arg_type(a::Expr)
+  if a.head == :call && length(a.args) == 3 && a.args[1] == :Union && a.args[3] == :Nothing
+    _arg_type(a.args[2])
+  else
+    a
   end
 end
 
@@ -149,19 +198,20 @@ end
 
 empty(x) = nothing
 
-function gen_switch(cases::Array{(Expr,Expr),1}, default)
+function _gen_switch(cases::Array{(Expr,Expr),1}, default)
   head = quote nothing end
   last = head
   for (cond, res) in cases
-    last = push_last!(last, :($cond ? $res : nothing))
+    last = _push_last!(last, :($cond ? $res : nothing))
   end
   # TODO push default to last statement
+  _push_last!(last, default)
   head
 end
 
 # update else clause in if expression with 'expr'
 # return reference to updated if
-function push_last!(if_expr, expr)
+function _push_last!(if_expr, expr)
   last = if_expr
   while isa(last, Expr)
     last, if_expr = if_expr.args[end], last

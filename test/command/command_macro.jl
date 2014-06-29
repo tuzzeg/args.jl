@@ -38,18 +38,18 @@ end)
 #  end
 #end
 
-function update!(o::_mv_args, args::Array{String, 1})
-  arg, tail = args[1], args[2:end]
-  if arg == "--from"
-    o.from = parse_string(tail)
-  elseif arg == "--to"
-    o.to = parse_string(tail)
-  elseif arg == "-f" || arg == "--file"
-    o.file = parse_string(tail)
-  elseif arg == "-r" || arg == "--recursive"
-    o.recursive = parse_bool(tail)
-  end
-end
+#function update!(o::_mv_args, args::Array{String, 1})
+#  arg, tail = args[1], args[2:end]
+#  if arg == "--from"
+#    o.from = parse_string(tail)
+#  elseif arg == "--to"
+#    o.to = parse_string(tail)
+#  elseif arg == "-f" || arg == "--file"
+#    o.file = parse_string(tail)
+#  elseif arg == "-r" || arg == "--recursive"
+#    o.recursive = parse_bool(tail)
+#  end
+#end
 
 function validate(o::_mv_args)
   errors = String[]
@@ -76,13 +76,13 @@ end
 
 empty(::Type{Range}) = Range()
 
-#function valency(::Type{Range}, arg::String)
-#  if arg in ["--from", "--to"]
-#    1
-#  else
-#    -1
-#  end
-#end
+function valency(::Type{Range}, arg::String)
+  if arg in ["--from", "--to"]
+    1
+  else
+    -1
+  end
+end
 
 function update!(o::Range, args::Array{String, 1})
   arg, tail = args[1], args[2:end]
@@ -127,21 +127,21 @@ end)
 #  end
 #end
 
-function update!(o::_mv1_args, args::Array{String, 1})
-  arg, tail = args[1], args[2:end]
-  updated = true
-  if arg == "--op"
-    o.op = parse_string(tail)
-  elseif arg == "--to"
-    o.range.to = parse_string(tail)
-  elseif arg == "--from"
-    o.range.from = parse_string(tail)
-  else
-    updated = false
-    updated |= update!(o.range, args)
-  end
-  updated
-end
+#function update!(o::_mv1_args, args::Array{String, 1})
+#  arg, tail = args[1], args[2:end]
+#  updated = true
+#  if arg == "--op"
+#    o.op = parse_string(tail)
+#  elseif arg == "--to"
+#    o.range.to = parse_string(tail)
+#  elseif arg == "--from"
+#    o.range.from = parse_string(tail)
+#  else
+#    updated = false
+#    updated |= update!(o.range, args)
+#  end
+#  updated
+#end
 
 function validate(o::_mv1_args)
   errors = String[]
@@ -175,7 +175,7 @@ function parse_command()
   @test 1 == valency(o, "--to")
   @test 1 == valency(o, "-f")
   @test 0 == valency(o, "-r")
-  @test -1 == valency(o, "--not-exists")
+  #@test -1 == valency(o, "--not-exists")
 end
 
 function parse_command_no_r()
@@ -204,8 +204,8 @@ function parse_inner()
   @test 1 == valency(o, "--from")
   @test 1 == valency(o, "--to")
   @test 1 == valency(o, "--op")
-  @test -1 == valency(o, "-r")
-  @test -1 == valency(o, "-f")
+  #@test -1 == valency(o, "-r")
+  #@test -1 == valency(o, "-f")
 end
 
 parse_command()
