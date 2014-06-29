@@ -36,6 +36,38 @@ function parse_arg(expr::Expr)
   Arg(sym, typ, matches, default)
 end
 
+# Generate valency dict: {0=>["-r"], 1=>["-f", "--from", ...], }
+function valencies(args::Array{Arg, 1})
+  d = Dict{Int, Set{String}}()
+  for a in args
+    matches = get!(d, _valency(a.typ), Set{String}())
+    push!(matches, a.matches...)
+  end
+  d
+end
+
+function _valency(a::Symbol)
+  if a == :Bool
+    0
+  elseif a == :String || a == :Int
+    1
+  else
+    throw(ArgumentError("Valency not defined for type $a"))
+  end
+end
+
+function _valency(a::Expr)
+  if a.head == :call
+    if length(a.args) == 3 && a.args[1] == :Union && a.args[3] == :Nothing
+      _valency(a.args[2])
+    else
+      throw(ArgumentError("Support Union(type, Nothing) expressions only, but found [$a]"))
+    end
+  else
+    throw(ArgumentError("Support Union expressions only, but found [$a]"))
+  end
+end
+
 # in tuple expr finds '$sym::$typ[=$default]' and returns (sym, typ, default)
 function _parse_sym(expr)
   if expr.head != :tuple
