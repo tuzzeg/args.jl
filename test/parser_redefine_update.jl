@@ -1,10 +1,14 @@
+include("m1.jl")
+
+module parser_redefine_update
+
 using Base.Test
+
+import m1: update!
 
 require("src/args.jl")
 import args: @command
-
-include("m1.jl")
-import m1: update!
+import args
 
 @command(mv,
   (from::String, long="--from", required=true), # required
@@ -27,3 +31,5 @@ function test_parse()
 end
 
 test_parse()
+
+end # module

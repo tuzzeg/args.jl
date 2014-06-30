@@ -1,7 +1,10 @@
+module parser_macros
+
 using Base.Test
 
 require("src/args.jl")
-import args: @command, update!, valency, validate, empty
+import args: @command
+import args
 
 @command(mv,
   (from::String, long="--from", required=true), # required
@@ -68,55 +71,57 @@ end
 
 function parse_command()
   o = _mv_args()
-  update!(o, String["--from", "/path/from"])
-  update!(o, String["--to", "/path/to"])
-  update!(o, String["-r"])
+  args.update!(o, String["--from", "/path/from"])
+  args.update!(o, String["--to", "/path/to"])
+  args.update!(o, String["-r"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
   @test o.recursive
 
-  @test 1 == valency(o, "--from")
-  @test 1 == valency(o, "--to")
-  @test 1 == valency(o, "-f")
-  @test 0 == valency(o, "-r")
-  @test -1 == valency(o, "--not-exists")
+  @test 1 == args.valency(o, "--from")
+  @test 1 == args.valency(o, "--to")
+  @test 1 == args.valency(o, "-f")
+  @test 0 == args.valency(o, "-r")
+  @test -1 == args.valency(o, "--not-exists")
 end
 
 function parse_command_no_r()
   o = _mv_args()
-  update!(o, String["--from", "/path/from"])
-  update!(o, String["--to", "/path/to"])
+  args.update!(o, String["--from", "/path/from"])
+  args.update!(o, String["--to", "/path/to"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
   @test nothing == o.recursive
 
-  errors = validate(o)
+  errors = args.validate(o)
   @assert "required: -r" == errors[1]
 end
 
 function parse_inner()
   o = _mv1_args()
-  update!(o, String["--from", "/path/from"])
-  update!(o, String["--to", "/path/to"])
-  update!(o, String["--op", "op"])
+  args.update!(o, String["--from", "/path/from"])
+  args.update!(o, String["--to", "/path/to"])
+  args.update!(o, String["--op", "op"])
 
   @test "/path/from" == o.range.from
   @test "/path/to" == o.range.to
   @test "op" == o.op
 
-  @test 1 == valency(o, "--from")
-  @test 1 == valency(o, "--to")
-  @test 1 == valency(o, "--op")
-  @test -1 == valency(o, "-r")
-  @test -1 == valency(o, "-f")
+  @test 1 == args.valency(o, "--from")
+  @test 1 == args.valency(o, "--to")
+  @test 1 == args.valency(o, "--op")
+  @test -1 == args.valency(o, "-r")
+  @test -1 == args.valency(o, "-f")
 end
+
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa
 
 parse_command()
 parse_command_no_r()
 
 parse_inner()
 
-# TODO invalid valency: --from --to
-# TODO override: -c conf --conf.inner.str=aaa
+end # module

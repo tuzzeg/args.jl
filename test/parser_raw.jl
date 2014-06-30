@@ -1,3 +1,5 @@
+module parser_raw
+
 using Base.Test
 
 # Runtime {
@@ -165,8 +167,10 @@ function parse_command_no_r()
   @assert "required: --recursive" == errors[1]
 end
 
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa
+
 parse_command()
 parse_command_no_r()
 
-# TODO invalid valency: --from --to
-# TODO override: -c conf --conf.inner.str=aaa
+end # module

@@ -1,6 +1,9 @@
+module test_macros
+
 import Base.Test
 
 require("src/macros.jl")
+import args: parse_args, _valency
 
 function test_parse_command_args()
   arg = parse_arg(:((from::String="<def>", short="-f", long="--from")))
@@ -22,3 +25,5 @@ end
 
 test_parse_command_args()
 test_valency()
+
+end # module
