@@ -1,97 +1,122 @@
 using Base.Test
 
 require("src/args.jl")
-import args: @args, @main, Arg, CommandArgs, StructUpdater, update!, parser, call
+import args: @command, update!, valency, validate, empty
 
-# ls --dir=/path/ls
-@args(ls,
-  Arg{String}(:dir, "--dir"; short="-d", default="")
-)
-ls(dir="/path/ls") = "ls dir=$dir"
+@command(mv,
+  (from::String, long="--from", required=true), # required
+  (to::String, long="--to"), # optional
+  (file::String="file.csv", short="-f", long="--file"), # optional
+  (recursive::Bool, short="-r", required=true), # required
+begin
+  "mv from=$from to=$to file=$file recursive=$recursive"
+end)
 
-# move --from=/path/from --to /path/to -r
-@args(move,
-  Arg{String}(:from, "--from"; default=""),
-  Arg{String}(:to, "--to"; default=""),
-  Arg{Bool}(:recursive, "--recursive"; short="-r", default=false)
-)
-function move(from::String, to::String, recursive::Bool=false)
-  "move from=$from to=$to r=$recursive"
+# @struct(Range,
+#   (from::String, long="--from"),
+#   (to::String, long="--to"),
+
+# {
+type Range
+  from::String
+  to::String
+  Range() = new()
 end
 
-@main(ls, move)
+args.empty(::Type{Range}) = Range()
 
-function parse_args()
-  args = String["--from", "/path/from", "--to", "/path/to", "-r"]
-  o = _move_args()
-  args1 = update!(o, args)
+function args.valency(::Type{Range}, arg::String)
+  if arg in ["--from", "--to"]
+    1
+  else
+    -1
+  end
+end
+
+function args.update!(o::Range, _args::Array{String, 1})
+  arg, tail = _args[1], _args[2:end]
+  updated = true
+  if arg == "--from"
+    o.from = args.parse_string(tail)
+  elseif arg == "--to"
+    o.to = args.parse_string(tail)
+  else
+    updated = false
+  end
+  updated
+end
+
+function args.validate(o::Range)
+  String[]
+end
+
+# }
+
+@command(mv1,
+  (range::Range, ),
+  (op::String, long="--op"),
+begin
+  "mv1 range=$range op=$op"
+end)
+
+type Conf
+  contents::String # read config file here
+end
+
+#
+# Test methods
+
+function parse_command()
+  o = _mv_args()
+  update!(o, String["--from", "/path/from"])
+  update!(o, String["--to", "/path/to"])
+  update!(o, String["-r"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
   @test o.recursive
+
+  @test 1 == valency(o, "--from")
+  @test 1 == valency(o, "--to")
+  @test 1 == valency(o, "-f")
+  @test 0 == valency(o, "-r")
+  @test -1 == valency(o, "--not-exists")
 end
 
-function parse_args1()
-  args = String["--from=/path/from", "--to", "/path/to", "-r"]
-  o = _move_args()
-  args1 = update!(o, args)
+function parse_command_no_r()
+  o = _mv_args()
+  update!(o, String["--from", "/path/from"])
+  update!(o, String["--to", "/path/to"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
-  @test o.recursive
+  @test nothing == o.recursive
+
+  errors = validate(o)
+  @assert "required: -r" == errors[1]
 end
 
-function parse_commands_move()
-  args = String["move", "--from=/path/from", "--to", "/path/to"]
-  o = CommandArgs()
-  args1 = update!(o, args)
+function parse_inner()
+  o = _mv1_args()
+  update!(o, String["--from", "/path/from"])
+  update!(o, String["--to", "/path/to"])
+  update!(o, String["--op", "op"])
 
-  # @test :move == o.sym
-  @test "/path/from" == o.args.from
-  @test "/path/to" == o.args.to
-  @test !o.args.recursive
+  @test "/path/from" == o.range.from
+  @test "/path/to" == o.range.to
+  @test "op" == o.op
+
+  @test 1 == valency(o, "--from")
+  @test 1 == valency(o, "--to")
+  @test 1 == valency(o, "--op")
+  @test -1 == valency(o, "-r")
+  @test -1 == valency(o, "-f")
 end
 
-function parse_commands_ls()
-  args = String["ls", "--dir=/path/a"]
-  o = CommandArgs()
-  args1 = update!(o, args)
+parse_command()
+parse_command_no_r()
 
-  # @test :ls == o.sym
-  @test "/path/a" == o.args.dir
-end
+parse_inner()
 
-function call_command_ls()
-  args = String["ls", "--dir=/path/a"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @assert "ls dir=/path/a" == call(o)
-end
-
-function call_command_move()
-  args = String["move", "--from=/path/from", "--to", "/path/to"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @assert "move from=/path/from to=/path/to r=false" == call(o)
-end
-
-function call_command_move_insufficient()
-  args = String["move", "--from=/path/from"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @assert "move from=/path/from to= r=false" == call(o)
-end
-
-parse_args()
-parse_args1()
-
-parse_commands_move()
-parse_commands_ls()
-
-call_command_ls()
-call_command_move()
-
-call_command_move_insufficient()
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa

@@ -1,143 +1,172 @@
 using Base.Test
 
-require("src/args.jl")
-import args: CommandArgs, StructUpdater, update!, parser, call
-
-# ls --dir=/path/ls
-ls(dir="/path/ls") = "ls dir=$dir"
-
-# { generated: ls specific
-type _ls_args
-  dir::String
-  _ls_args() = new("")
-end
-
-ls(o::_ls_args) = ls(o.dir)
-
-function parser(p::_ls_args, arg::String)
-  if arg == "--dir" || arg == "-d"
-    StructUpdater{String}(:dir)
-  else
-    nothing
-  end
-end
+# Runtime {
+parse_string(args::Array{String, 1}) = args[1]
+parse_int(args::Array{String, 1}) = int(args[1])
+parse_bool(args::Array{String, 1}) = true
 # }
 
-# conf{from="/path/from", to="/path/to"}
-# move -c conf
-# move(from="/path/from", to="/path/to")
+# { generated: mv
 
-
-# move --from=/path/from --to /path/to -r
-function move(from::String, to::String, recursive::Bool=false)
-  "move from=$from to=$to r=$recursive"
+type _mv_args
+  from::Union(String, Nothing)
+  to::Union(String, Nothing)
+  file::String
+  recursive::Union(Bool, Nothing)
+  _mv_args() = new(nothing, nothing, "file.csv", nothing)
 end
 
-# { generated: Move specific
-type _move_args
+function valency(::Type{_mv_args}, arg::String)
+  if arg in ["--from", "--to", "-f", "--file"]
+    1
+  elseif arg in ["-r", "--recursive"]
+    0
+  else
+    -1
+  end
+end
+
+function update!(o::_mv_args, args::Array{String, 1})
+  arg, tail = args[1], args[2:end]
+  if arg == "--from"
+    o.from = parse_string(tail)
+  elseif arg == "--to"
+    o.to = parse_string(tail)
+  elseif arg == "-f" || arg == "--file"
+    o.file = parse_string(tail)
+  elseif arg == "-r" || arg == "--recursive"
+    o.recursive = parse_bool(tail)
+  end
+end
+
+function validate(o::_mv_args)
+  errors = String[]
+  if o.from == nothing
+    push!(errors, "required: --from")
+  elseif o.recursive == nothing
+    push!(errors, "required: --recursive")
+  end
+  errors
+end
+
+# }
+
+# @struct(Range,
+#   (from::String, long="--from"),
+#   (to::String, long="--to"),
+
+# {
+type Range
   from::String
   to::String
-  recursive::Bool
-  _move_args() = new("", "", false)
 end
 
-move(o::_move_args) = move(o.from, o.to, o.recursive)
+function valency(::Type{Range}, arg::String)
+  if arg in ["--from", "--to"]
+    1
+  else
+    -1
+  end
+end
 
-function parser(p::_move_args, arg::String)
+function update!(o::Range, args::Array{String, 1})
+  arg, tail = args[1], args[2:end]
+  updated = true
   if arg == "--from"
-    StructUpdater{String}(:from)
+    o.from = parse_string(tail)
   elseif arg == "--to"
-    StructUpdater{String}(:to)
-  elseif arg == "-r" || arg == "--recursive"
-    StructUpdater{Bool}(:recursive)
+    o.to = parse_string(tail)
   else
-    nothing
+    updated = false
   end
-end
-# }
-
-# { generated: main
-
-function update!(o::CommandArgs, args::Array{String,1})
-  if length(args) < 1
-    throw(ParseException("Expected command, args=$(args)"))
-  end
-  cmd, args = args[1], args[2:end]
-  if cmd == "move"
-    o.action = move
-    o.args = _move_args()
-    update!(o.args, args)
-  elseif cmd == "ls"
-    o.action = ls
-    o.args = _ls_args()
-    update!(o.args, args)
-  else
-    throw(ParseError("Unexpected command [$cmd]"))
-  end
+  updated
 end
 
+function validate(o::Range)
+  String[]
+end
 
 # }
 
-function parse_args()
-  args = String["--from", "/path/from", "--to", "/path/to", "-r"]
-  o = _move_args()
-  args1 = update!(o, args)
+# @command(mv1,
+#   (range::Range),
+#   (op::String, long="--op"),
+
+# {
+type _mv1_args
+  range::Range
+  op::String
+end
+
+function valency(::Type{_mv1_args}, arg::String)
+  v = -1
+  if arg in ["--op"]
+    1
+  elseif 0 < (v = valency(Range, arg))
+    v
+  else
+    -1
+  end
+end
+
+function update!(o::_mv1_args, args::Array{String, 1})
+  arg, tail = args[1], args[2:end]
+  updated = true
+  if arg == "--op"
+    o.op = parse_string(tail)
+  elseif arg == "--to"
+    o.to = parse_string(tail)
+  else
+    updated = false
+    updated |= update!(Range, args)
+  end
+  updated
+end
+
+function validate(o::_mv1_args)
+  errors = String[]
+  push!(errors, validate(o.range))
+  errors
+end
+
+# }
+
+type Conf
+  contents::String # read config file here
+end
+
+# @command(cmd1,
+#   (conf::Conf, short="-c"),
+
+# {
+# }
+
+function parse_command()
+  o = _mv_args()
+  update!(o, String["--from", "/path/from"])
+  update!(o, String["--to", "/path/to"])
+  update!(o, String["-r"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
   @test o.recursive
 end
 
-function parse_args1()
-  args = String["--from=/path/from", "--to", "/path/to", "-r"]
-  o = _move_args()
-  args1 = update!(o, args)
+function parse_command_no_r()
+  o = _mv_args()
+  update!(o, String["--from", "/path/from"])
+  update!(o, String["--to", "/path/to"])
 
   @test "/path/from" == o.from
   @test "/path/to" == o.to
-  @test o.recursive
+  @test nothing == o.recursive
+
+  errors = validate(o)
+  @assert "required: --recursive" == errors[1]
 end
 
-function parse_commands_move()
-  args = String["move", "--from=/path/from", "--to", "/path/to"]
-  o = CommandArgs()
-  args1 = update!(o, args)
+parse_command()
+parse_command_no_r()
 
-  @test "/path/from" == o.args.from
-  @test "/path/to" == o.args.to
-  @test !o.args.recursive
-end
-
-function parse_commands_ls()
-  args = String["ls", "--dir=/path/a"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @test "/path/a" == o.args.dir
-end
-
-function call_command_ls()
-  args = String["ls", "--dir=/path/a"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @assert "ls dir=/path/a" == call(o)
-end
-
-function call_command_move()
-  args = String["move", "--from=/path/from", "--to", "/path/to"]
-  o = CommandArgs()
-  args1 = update!(o, args)
-
-  @assert "move from=/path/from to=/path/to r=false" == call(o)
-end
-
-parse_args()
-parse_args1()
-
-parse_commands_move()
-parse_commands_ls()
-
-call_command_ls()
-call_command_move()
+# TODO invalid valency: --from --to
+# TODO override: -c conf --conf.inner.str=aaa

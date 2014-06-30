@@ -4,8 +4,6 @@ include("rt.jl")
 include("macros.jl")
 
 export
-  @args, @main, Arg,
-  CommandArgs, StructUpdater,
-  update!, parser, validate, call, main
+  @command, update!, valency, validate, empty
 
 end # module

@@ -1,7 +1,6 @@
 import Base.Test
 
-include("macros.jl")
-import macros: Arg, parse_arg, _valency
+require("src/macros.jl")
 
 function test_parse_command_args()
   arg = parse_arg(:((from::String="<def>", short="-f", long="--from")))
