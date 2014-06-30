@@ -8,6 +8,7 @@ immutable Arg
   typ
   matches::Array{String,1}
   default
+  optional::Bool
 end
 
 macro command(sym, exprs...)
@@ -15,10 +16,13 @@ macro command(sym, exprs...)
   local body_expr = exprs[end]
   local args = map(parse_arg, arg_exprs)
 
+  local t_sym = symbol("_$(sym)_args")
+
   gen = esc(quote
-    $(_gen_argtype(sym, args))
-    $(_gen_valency(sym, args))
-    $(_gen_update(sym, args))
+    $(_gen_argtype(t_sym, args))
+    $(_gen_valency(t_sym, args))
+    $(_gen_update(t_sym, args))
+    $(_gen_validate(t_sym, args))
   end)
   gen
 end
@@ -30,8 +34,7 @@ end
 #   recursive::Union(Bool, Nothing)
 #  _mv_args() = new(nothing, nothing, "file.csv", nothing)
 # end
-function _gen_argtype(sym, args)
-  local t_sym = symbol("_$(sym)_args")
+function _gen_argtype(t_sym, args)
   local t_members = {:($(a.sym)::$(a.typ)) for a in args}
   local t_defaults = {a.default for a in args}
 
@@ -44,11 +47,9 @@ function _gen_argtype(sym, args)
 end
 
 # Generate valency function.
-# valency(::Type, arg::String)
+# valency(::ArgType, arg::String)
 # which returns number of additional arguments for the given [arg]ument
-function _gen_valency(sym, args)
-  local t_sym = symbol("_$(sym)_args")
-
+function _gen_valency(t_sym, args)
   cases = (Expr, Expr)[]
   for a in args
     v = _valency(a.typ)
@@ -66,10 +67,8 @@ function _gen_valency(sym, args)
   end
 end
 
-# Generate update!(o::_mv_args, args::Array{String, 1})
-function _gen_update(sym, args)
-  local t_sym = symbol("_$(sym)_args")
-
+# Generate update!(o::ArgType, args::Array{String, 1})
+function _gen_update(t_sym, args)
   cases = (Expr, Expr)[]
   fallovers = Expr[]
   for a in args
@@ -96,12 +95,40 @@ function _gen_update(sym, args)
   end
 end
 
+# Generate validate(o::ArgType)
+function _gen_validate(t_sym, args)
+  cases = (Expr, Expr)[]
+  validate_exprs = Expr[]
+  for a in args
+    if !a.optional
+      push!(cases, (:(o.$(a.sym) == nothing),
+        quote
+          push!(errors, "required: " * $(join(a.matches, "|")))
+        end))
+    end
+    push!(validate_exprs,
+      quote
+        push!(errors, validate(o.$(a.sym))...)
+      end)
+  end
+  last_else = quote end
+
+  quote
+    function validate(o::$(t_sym))
+      errors = String[]
+      $(_gen_switch(cases, last_else))
+      $(validate_exprs...)
+      errors
+    end
+  end
+end
+
 function parse_arg(expr::Expr)
-  sym, typ, default = _parse_sym(expr)
+  sym, typ, default, optional = _parse_sym(expr)
   matches = String[]
   _push_nonempty!(matches, _get_by_key(expr, :short))
   _push_nonempty!(matches, _get_by_key(expr, :long))
-  Arg(sym, typ, matches, default)
+  Arg(sym, typ, matches, default, optional)
 end
 
 function _valency(typ)
@@ -164,14 +191,14 @@ function _parse_sym(expr)
     if child_expr.head == :(::)
       sym = child_expr.args[1]
       typ = :(Union($(child_expr.args[2]), Nothing))
-      return (sym, typ, :(macros.empty($(child_expr.args[2]))))
+      return (sym, typ, :(macros.empty($(child_expr.args[2]))), false)
     # case sym::Typ=default
     elseif child_expr.head == :(=) && child_expr.args[1].head == :(::)
       sym = child_expr.args[1].args[1]
       typ = child_expr.args[1].args[2]
       default = child_expr.args[2]
-      return (sym, typ, default)
-   end
+      return (sym, typ, default, true)
+    end
   end
   throw(ParseError("Not found \$sym::\$typ expression in [$expr]"))
  end

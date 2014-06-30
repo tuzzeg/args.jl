@@ -7,6 +7,8 @@ import macros: @command, empty
 parse_string(args::Array{String, 1}) = args[1]
 parse_int(args::Array{String, 1}) = int(args[1])
 parse_bool(args::Array{String, 1}) = true
+
+validate(o) = String[]
 # }
 
 @command(mv,
@@ -51,15 +53,15 @@ end)
 #  end
 #end
 
-function validate(o::_mv_args)
-  errors = String[]
-  if o.from == nothing
-    push!(errors, "required: --from")
-  elseif o.recursive == nothing
-    push!(errors, "required: --recursive")
-  end
-  errors
-end
+#function validate(o::_mv_args)
+#  errors = String[]
+#  if o.from == nothing
+#    push!(errors, "required: --from")
+#  elseif o.recursive == nothing
+#    push!(errors, "required: --recursive")
+#  end
+#  errors
+#end
 
 # }
 
@@ -143,11 +145,11 @@ end)
 #  updated
 #end
 
-function validate(o::_mv1_args)
-  errors = String[]
-  push!(errors, validate(o.range))
-  errors
-end
+#function validate(o::_mv1_args)
+#  errors = String[]
+#  push!(errors, validate(o.range))
+#  errors
+#end
 
 # }
 
@@ -175,7 +177,7 @@ function parse_command()
   @test 1 == valency(o, "--to")
   @test 1 == valency(o, "-f")
   @test 0 == valency(o, "-r")
-  #@test -1 == valency(o, "--not-exists")
+  @test -1 == valency(o, "--not-exists")
 end
 
 function parse_command_no_r()
@@ -188,7 +190,7 @@ function parse_command_no_r()
   @test nothing == o.recursive
 
   errors = validate(o)
-  @assert "required: --recursive" == errors[1]
+  @assert "required: -r" == errors[1]
 end
 
 function parse_inner()
@@ -204,8 +206,8 @@ function parse_inner()
   @test 1 == valency(o, "--from")
   @test 1 == valency(o, "--to")
   @test 1 == valency(o, "--op")
-  #@test -1 == valency(o, "-r")
-  #@test -1 == valency(o, "-f")
+  @test -1 == valency(o, "-r")
+  @test -1 == valency(o, "-f")
 end
 
 parse_command()
