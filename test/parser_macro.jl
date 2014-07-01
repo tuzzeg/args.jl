@@ -3,7 +3,7 @@ module parser_macros
 using Base.Test
 
 require("src/args.jl")
-import args: @command
+import args: @command, @struct
 import args
 
 @command(mv,
@@ -15,45 +15,10 @@ begin
   "mv from=$from to=$to file=$file recursive=$recursive"
 end)
 
-# @struct(Range,
-#   (from::String, long="--from"),
-#   (to::String, long="--to"),
-
-# {
-type Range
-  from::String
-  to::String
-  Range() = new()
-end
-
-args.empty(::Type{Range}) = Range()
-
-function args.valency(::Type{Range}, arg::String)
-  if arg in ["--from", "--to"]
-    1
-  else
-    -1
-  end
-end
-
-function args.update!(o::Range, _args::Array{String, 1})
-  arg, tail = _args[1], _args[2:end]
-  updated = true
-  if arg == "--from"
-    o.from = args.parse_string(tail)
-  elseif arg == "--to"
-    o.to = args.parse_string(tail)
-  else
-    updated = false
-  end
-  updated
-end
-
-function args.validate(o::Range)
-  String[]
-end
-
-# }
+@struct(Range,
+  (from::String, long="--from"),
+  (to::String, long="--to")
+)
 
 @command(mv1,
   (range::Range, ),
@@ -79,11 +44,11 @@ function parse_command()
   @test "/path/to" == o.to
   @test o.recursive
 
-  @test 1 == args.valency(o, "--from")
-  @test 1 == args.valency(o, "--to")
-  @test 1 == args.valency(o, "-f")
-  @test 0 == args.valency(o, "-r")
-  @test -1 == args.valency(o, "--not-exists")
+  @test 1 == args.valency(typeof(o), "--from")
+  @test 1 == args.valency(typeof(o), "--to")
+  @test 1 == args.valency(typeof(o), "-f")
+  @test 0 == args.valency(typeof(o), "-r")
+  @test -1 == args.valency(typeof(o), "--not-exists")
 end
 
 function parse_command_no_r()
@@ -109,11 +74,11 @@ function parse_inner()
   @test "/path/to" == o.range.to
   @test "op" == o.op
 
-  @test 1 == args.valency(o, "--from")
-  @test 1 == args.valency(o, "--to")
-  @test 1 == args.valency(o, "--op")
-  @test -1 == args.valency(o, "-r")
-  @test -1 == args.valency(o, "-f")
+  @test 1 == args.valency(typeof(o), "--from")
+  @test 1 == args.valency(typeof(o), "--to")
+  @test 1 == args.valency(typeof(o), "--op")
+  @test -1 == args.valency(typeof(o), "-r")
+  @test -1 == args.valency(typeof(o), "-f")
 end
 
 # TODO invalid valency: --from --to

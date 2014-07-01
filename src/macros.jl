@@ -22,6 +22,18 @@ macro command(sym, exprs...)
   gen
 end
 
+macro struct(sym, exprs...)
+  local args = map(parse_arg, exprs)
+  gen = esc(quote
+    $(_gen_argtype(sym, args))
+    $(_gen_valency(sym, args))
+    $(_gen_update(sym, args))
+    $(_gen_validate(sym, args))
+    args.empty(::Type{$sym}) = $sym()
+  end)
+  gen
+end
+
 # Generate arguments holder type.
 # type _mv_args
 #   from::Union(String, Nothing)
@@ -56,7 +68,7 @@ function _gen_valency(t_sym, args)
   end
 
   quote
-    function args.valency(::$t_sym, arg)
+    function args.valency(::Type{$t_sym}, arg)
       $(_gen_switch(cases, quote -1 end))
     end
   end
