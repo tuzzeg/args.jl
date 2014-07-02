@@ -81,6 +81,36 @@ function parse_inner()
   @test -1 == args.valency(typeof(o), "-f")
 end
 
+function parse_and_call()
+  o = _mv_args()
+  args.update!(o, String["--from", "/path/from"])
+  args.update!(o, String["--to", "/path/to"])
+
+  @assert "mv from=/path/from to=/path/to file=file.csv recursive=nothing" == mv(o)
+end
+
+function parse_and_call_mv1()
+  o = _mv1_args()
+  args.update!(o, String["--from", "/path/from"])
+  args.update!(o, String["--to", "/path/to"])
+  args.update!(o, String["--op", "op"])
+
+  @assert """mv1 range=Range("/path/from","/path/to") op=op""" == mv1(o)
+end
+
+function metadata_mv()
+  m = args.metadata(_mv_args)
+
+  @assert "mv" == m.command
+  @assert is(_mv_args, m.typ)
+
+  o = _mv_args()
+  o.from = "/from"
+  o.to = "/to"
+  o.file = "f"
+  @assert "mv from=/from to=/to file=f recursive=nothing" == m.action(o)
+end
+
 # TODO invalid valency: --from --to
 # TODO override: -c conf --conf.inner.str=aaa
 
@@ -88,5 +118,10 @@ parse_command()
 parse_command_no_r()
 
 parse_inner()
+
+parse_and_call()
+parse_and_call_mv1()
+
+metadata_mv()
 
 end # module

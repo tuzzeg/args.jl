@@ -18,6 +18,9 @@ macro command(sym, exprs...)
     $(_gen_valency(t_sym, args))
     $(_gen_update(t_sym, args))
     $(_gen_validate(t_sym, args))
+    $(_gen_metadata(sym, t_sym))
+    $(_gen_func_typed(sym, t_sym, args))
+    $(_gen_func(sym, args, body_expr))
   end)
   gen
 end
@@ -127,6 +130,35 @@ function _gen_validate(t_sym, args)
       $(validate_exprs...)
       errors
     end
+  end
+end
+
+# Generate function mv(::ArgType) that calls function with arguments.
+function _gen_func_typed(sym, t_sym, _args)
+  local f_args = {:(o.$(a.sym)) for a in _args}
+  quote
+    function $sym(o::$t_sym)
+      $sym($(f_args...))
+    end
+  end
+end
+
+# Generate function mv(args...).
+function _gen_func(sym, _args, body)
+  local f_args = {:($(a.sym)::$(a.typ)) for a in _args}
+  quote
+    function $sym($(f_args...))
+      $body
+    end
+  end
+end
+
+# Generate metadata(::Type{ArgType}) method,
+# which returns a Command object with info about command.
+function _gen_metadata(sym, t_sym)
+  local cmd = "$sym"
+  quote
+    args.metadata(o::Type{$t_sym}) = args.Command($cmd, $t_sym, $sym)
   end
 end
 
