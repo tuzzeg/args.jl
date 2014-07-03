@@ -15,32 +15,23 @@ function main(_args::Array{String,1})
   if !haskey(commands, cmd)
     throw(ArgumentError("Unknown command, expected [$(join(keys(commands), " "))]"))
   end
-  cmdf = commands[cmd]
-  dump(cmdf)
-  o = cmdf.typ()
+  meta = commands[cmd]
+  o = meta.typ()
   _update(o, _args)
   _validate(o)
-end
-
-immutable CmdFunc
-  mdl::String
-  cmd::String
-  typ::DataType
-  f::Function
+  meta.action(o)
 end
 
 function _commands()
   _type{T}(f::Function, ::Type{Type{T}}) = f(T)
   _type(f::Function, ::Any) = nothing
 
-  commands = Dict{String, CmdFunc}()
-  for method in methods(args.command)
+  commands = Dict{String, Command}()
+  for method in methods(args.metadata)
     mdl = method.func.code.module
     _type(method.sig[1]) do typ
-      command = args.command(typ)
-      println("mdl=$mdl command=$command")
-      cmdf = CmdFunc("$mdl", command, typ, getfield(mdl, symbol(command)))
-      commands["$mdl.$command"] = cmdf
+      meta = args.metadata(typ)
+      commands["$mdl.$(meta.command)"] = meta
     end
   end
   commands
@@ -58,7 +49,7 @@ function _update{T}(o::T, _args::Array{String,1})
         v = args.valency(T, arg)
         if 0<=v
           consumed = 1+v
-          args.update!(o, convert(Array{String,1}, args[i_arg:i_arg+v]))
+          args.update!(o, convert(Array{String,1}, _args[i_arg:i_arg+v]))
         end
       else
         v = args.valency(T, args_split[1])
@@ -66,7 +57,7 @@ function _update{T}(o::T, _args::Array{String,1})
           throw(ParseError("--option=value should be used only with valency=1, arg=[$arg]"))
         elseif 0<=v
           consumed = 1
-          args.update!(o, convert(Array{String,1}, args[i_arg:i_arg+v]))
+          args.update!(o, convert(Array{String,1}, args_split))
         end
       end
     end
@@ -78,6 +69,13 @@ function _update{T}(o::T, _args::Array{String,1})
     end
   end
   return unparsed
+end
+
+function _validate(o)
+  errors = args.validate(o)
+  if 0 < length(errors)
+    throw(ArgumentError(join(errors, "; ")))
+  end
 end
 
 #
@@ -93,8 +91,6 @@ valency(::Type{Int}, arg::String) = 1
 valency(::Type{Bool}, arg::String) = 0
 
 function valency(u::Type{UnionType}, arg::String)
-  println("val::UnionType")
-  dump(u)
   if length(u.types) == 2 && is(u.types[2], Nothing)
     valency(u.types[1], arg)
   else
