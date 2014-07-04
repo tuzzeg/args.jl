@@ -7,10 +7,10 @@ import args: @command, @struct
 import args
 
 @command(mv,
-  (from::String, long="--from", required=true), # required
-  (to::String, long="--to"), # optional
+  (from::String, long="--from"), # required
+  (to::String, long="--to"),     # required
   (file::String="file.csv", short="-f", long="--file"), # optional
-  (recursive::Bool, short="-r", required=true), # required
+  (recursive::Bool, short="-r", required=true),         # required
 begin
   "mv from=$from to=$to file=$file recursive=$recursive"
 end)

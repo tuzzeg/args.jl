@@ -45,7 +45,7 @@ end
 #  _mv_args() = new(nothing, nothing, "file.csv", nothing)
 # end
 function _gen_argtype(t_sym, args)
-  local t_members = {:($(a.sym)::$(a.typ)) for a in args}
+  local t_members = {:($(a.sym)::$(_typ(a))) for a in args}
   local t_defaults = {a.default for a in args}
 
   quote
@@ -66,7 +66,7 @@ function _gen_valency(t_sym, args)
     if 0 <= v
       push!(cases, (_match_expr(a), quote $v end))
     else
-      push!(cases, (:(0 < (v=args.valency($(_arg_type(a.typ)), arg))), quote v end))
+      push!(cases, (:(0 < (v=args.valency($(a.typ), arg))), quote v end))
     end
   end
 
@@ -145,7 +145,7 @@ end
 
 # Generate function mv(args...).
 function _gen_func(sym, _args, body)
-  local f_args = {:($(a.sym)::$(a.typ)) for a in _args}
+  local f_args = {:($(a.sym)::$(_typ(a))) for a in _args}
   quote
     function $sym($(f_args...))
       $body
@@ -171,10 +171,9 @@ function parse_arg(expr::Expr)
 end
 
 function _valency(typ)
-  t = _arg_type(typ)
-  if t == :Bool
+  if typ == :Bool
     0
-  elseif t == :String || t == :Int
+  elseif typ == :String || typ == :Int
     1
   else
     -1
@@ -182,31 +181,14 @@ function _valency(typ)
 end
 
 function _parser(typ)
-  t = _arg_type(typ)
-  if t == :Bool
+  if typ == :Bool
     :(args.parse_bool)
-  elseif t == :String
+  elseif typ == :String
     :(args.parse_string)
-  elseif t == :Int
+  elseif typ == :Int
     :(args.arse_int)
   else
     nothing
-  end
-end
-
-# Return argument type
-# x::Int -> Int
-# y::Union(String, Nothing) -> String
-# z::Range -> Range
-function _arg_type(a::Symbol)
-  a
-end
-
-function _arg_type(a::Expr)
-  if a.head == :call && length(a.args) == 3 && a.args[1] == :Union && a.args[3] == :Nothing
-    _arg_type(a.args[2])
-  else
-    a
   end
 end
 
@@ -229,7 +211,7 @@ function _parse_sym(expr)
     # case sym::Typ
     if child_expr.head == :(::)
       sym = child_expr.args[1]
-      typ = :(Union($(child_expr.args[2]), Nothing))
+      typ = child_expr.args[2]
       return (sym, typ, :(args.empty($(child_expr.args[2]))), false)
     # case sym::Typ=default
     elseif child_expr.head == :(=) && child_expr.args[1].head == :(::)
@@ -240,7 +222,9 @@ function _parse_sym(expr)
     end
   end
   throw(ParseError("Not found \$sym::\$typ expression in [$expr]"))
- end
+end
+
+_typ(a) = a.optional ? a.typ : :(Union($(a.typ), Nothing))
 
 # push [v]alue to [c]ollection if value != nothing
 function _push_nonempty!(c, v)
