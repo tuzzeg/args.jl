@@ -2,6 +2,8 @@ include("m1.jl")
 
 module parser_redefine_update
 
+# Redefine update! function, make sure it not clash with args.update! in generated code.
+
 using Base.Test
 
 import m1: update!
