@@ -10,7 +10,7 @@ import args
   (from::String, long="--from"), # required
   (to::String, long="--to"),     # required
   (file::String="file.csv", short="-f", long="--file"), # optional
-  (recursive::Bool, short="-r", required=true),         # required
+  (recursive::Bool, short="-r"), # required
 begin
   "mv from=$from to=$to file=$file recursive=$recursive"
 end)
@@ -61,7 +61,7 @@ function parse_command_no_r()
   @test nothing == o.recursive
 
   errors = args.validate(o)
-  @assert "required: -r" == errors[1]
+  @test "required: -r" == errors[1]
 end
 
 function parse_inner()
@@ -86,7 +86,7 @@ function parse_and_call()
   args.update!(o, String["--from", "/path/from"])
   args.update!(o, String["--to", "/path/to"])
 
-  @assert "mv from=/path/from to=/path/to file=file.csv recursive=nothing" == mv(o)
+  @test "mv from=/path/from to=/path/to file=file.csv recursive=nothing" == mv(o)
 end
 
 function parse_and_call_mv1()
@@ -95,20 +95,20 @@ function parse_and_call_mv1()
   args.update!(o, String["--to", "/path/to"])
   args.update!(o, String["--op", "op"])
 
-  @assert """mv1 range=Range("/path/from","/path/to") op=op""" == mv1(o)
+  @test """mv1 range=Range("/path/from","/path/to") op=op""" == mv1(o)
 end
 
 function metadata_mv()
   m = args.metadata(_mv_args)
 
-  @assert "mv" == m.command
-  @assert is(_mv_args, m.typ)
+  @test "mv" == m.command
+  @test is(_mv_args, m.typ)
 
   o = _mv_args()
   o.from = "/from"
   o.to = "/to"
   o.file = "f"
-  @assert "mv from=/from to=/to file=f recursive=nothing" == m.action(o)
+  @test "mv from=/from to=/to file=f recursive=nothing" == m.action(o)
 end
 
 # TODO invalid valency: --from --to

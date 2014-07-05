@@ -11,10 +11,10 @@ import args: @command
 import args
 
 @command(mv,
-  (from::String, long="--from", required=true), # required
-  (to::String, long="--to"), # optional
-  (file::String="file.csv", short="-f", long="--file"), # optional
-  (recursive::Bool, short="-r", required=true), # required
+  (from::String, long="--from"),
+  (to::String, long="--to"),
+  (file::String="file.csv", short="-f", long="--file"),
+  (recursive::Bool, short="-r"),
 begin
   "mv from=$from to=$to file=$file recursive=$recursive"
 end)

@@ -7,13 +7,13 @@ using args
 
 @command(ls,
   (dir::String="file.csv", short="-f", long="--file"),
-  (recursive::Bool, short="-r", required=true),
+  (recursive::Bool, short="-r"),
 begin
   "ls dir=$dir recursive=$recursive"
 end)
 
 @command(ls1,
-  (file::String, long="--from", required=true),
+  (file::String, long="--from"),
 begin
   "ls1 file=$file"
 end)

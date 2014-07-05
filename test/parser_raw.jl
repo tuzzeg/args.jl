@@ -164,7 +164,7 @@ function parse_command_no_r()
   @test nothing == o.recursive
 
   errors = validate(o)
-  @assert "required: --recursive" == errors[1]
+  @test "required: --recursive" == errors[1]
 end
 
 # TODO invalid valency: --from --to
