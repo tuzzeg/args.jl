@@ -5,6 +5,9 @@ immutable Command
   action::Function
 end
 
+main() = main(ARGS)
+main{T<:String}(_args) = main(convert(Array{String,1}), _args)
+
 # Scan all used modules for @command definition.
 function main(_args::Array{String,1})
   if length(_args) <= 0
