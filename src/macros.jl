@@ -186,7 +186,7 @@ function _parser(typ)
   elseif typ == :String
     :(args.parse_string)
   elseif typ == :Int
-    :(args.arse_int)
+    :(args.parse_int)
   else
     nothing
   end

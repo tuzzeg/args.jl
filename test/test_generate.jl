@@ -113,6 +113,23 @@ function metadata_mv()
   @test "mv from=/from to=/to file=f recursive=nothing" == m.action(o)
 end
 
+@command(cmd_types,
+  (s::String, long="--string"),
+  (i::Int, long="--int"),
+  (b::Bool, long="--bool"),
+begin
+  "cmd_types s=$s i=$i b=$b"
+end)
+
+function test_types()
+  o = _cmd_types_args()
+  args.update!(o, String["--string", "S"])
+  args.update!(o, String["--int", "13"])
+  args.update!(o, String["--bool"])
+
+  @test "cmd_types s=S i=13 b=true" == cmd_types(o)
+end
+
 # TODO invalid valency: --from --to
 # TODO override: -c conf --conf.inner.str=aaa
 
@@ -125,5 +142,7 @@ parse_and_call()
 parse_and_call_mv1()
 
 metadata_mv()
+
+test_types()
 
 end # module
