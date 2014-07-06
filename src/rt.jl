@@ -6,7 +6,7 @@ immutable Command
 end
 
 main() = main(ARGS)
-main(_args) = main(convert(Array{String,1}), _args)
+main(_args) = main(convert(Array{String,1}, _args))
 
 # Scan all used modules for @command definition.
 function main(_args::Array{String,1})
