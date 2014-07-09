@@ -10,11 +10,11 @@ main(_args) = main(convert(Array{String,1}, _args))
 
 # Scan all used modules for @command definition.
 function main(_args::Array{String,1})
+  commands = _commands()
   if length(_args) <= 0
-    throw(ArgumentError("Expected command"))
+    throw(ArgumentError("Expected command, one of [$(join(keys(commands), " "))]"))
   end
   cmd, _args = _args[1], _args[2:end]
-  commands = _commands()
   if !haskey(commands, cmd)
     throw(ArgumentError("Unknown command, expected [$(join(keys(commands), " "))]"))
   end
