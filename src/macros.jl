@@ -170,16 +170,18 @@ function parse_arg(expr::Expr)
   Arg(sym, typ, matches, default, optional)
 end
 
+# TODO use args.valency(::Type{T}) :: Int
 function _valency(typ)
-  if typ == :Bool
+  if typ==:Bool
     0
-  elseif typ == :String || typ == :Int
+  elseif typ==:String || typ==:Int || typ==:Float16 || typ==:Float32 || typ==:Float64
     1
   else
     -1
   end
 end
 
+# TODO use parse(::Type{T}, Array{String, 1}) :: T
 function _parser(typ)
   if typ == :Bool
     :(args.parse_bool)
@@ -187,6 +189,12 @@ function _parser(typ)
     :(args.parse_string)
   elseif typ == :Int
     :(args.parse_int)
+  elseif typ == :Float16
+    :(args.parse_f16)
+  elseif typ == :Float32
+    :(args.parse_f32)
+  elseif typ == :Float64
+    :(args.parse_f64)
   else
     nothing
   end

@@ -117,8 +117,10 @@ end
   (s::String, long="--string"),
   (i::Int, long="--int"),
   (b::Bool, long="--bool"),
+  (f32::Float32, long="--f32"),
+  (f64::Float64, long="--f64"),
 begin
-  "cmd_types s=$s i=$i b=$b"
+  "cmd_types s=$s i=$i b=$b f32=$f32 f64=$f64"
 end)
 
 function test_types()
@@ -126,8 +128,10 @@ function test_types()
   args.update!(o, String["--string", "S"])
   args.update!(o, String["--int", "13"])
   args.update!(o, String["--bool"])
+  args.update!(o, String["--f32", "0.001"])
+  args.update!(o, String["--f64", "1.001"])
 
-  @test "cmd_types s=S i=13 b=true" == cmd_types(o)
+  @test "cmd_types s=S i=13 b=true f32=0.001 f64=1.001" == cmd_types(o)
 end
 
 # TODO invalid valency: --from --to

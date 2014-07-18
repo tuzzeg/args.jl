@@ -88,10 +88,14 @@ end
 parse_string(args::Array{String, 1}) = args[1]
 parse_int(args::Array{String, 1}) = int(args[1])
 parse_bool(args::Array{String, 1}) = true
+parse_f16(args::Array{String, 1}) = parsefloat(Float16, args[1])
+parse_f32(args::Array{String, 1}) = parsefloat(Float32, args[1])
+parse_f64(args::Array{String, 1}) = parsefloat(Float64, args[1])
 
 valency(::Type{String}, arg::String) = 1
 valency(::Type{Int}, arg::String) = 1
 valency(::Type{Bool}, arg::String) = 0
+valency{T<:FloatingPoint}(::Type{T}, arg::String) = 1
 
 function valency(u::Type{UnionType}, arg::String)
   if length(u.types) == 2 && is(u.types[2], Nothing)
@@ -102,7 +106,7 @@ function valency(u::Type{UnionType}, arg::String)
 end
 
 validate(o) = String[]
-update!(o, args::Array{String, 1}) = nothing
+update!(o, args::Array{String, 1}) = false
 
 metadata(t) = throw(ArgumentError("Metadata not defined for type [$t]"))
 
