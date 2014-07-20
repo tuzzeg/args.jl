@@ -1,4 +1,9 @@
-# Features
+# 2014-Jul-10
+- Generate usage()
+- Remove _valency/_parser, use rt.jl functions
+
+# 2014-Jun-07
+## Impelemtn Features
 - Support commands
 julia storage.jl *get* --db db.kch -k 1
 julia storage.jl *keys* --db db.kch
