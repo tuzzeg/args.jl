@@ -3,6 +3,7 @@ module test_macros
 using Base.Test
 
 include("../src/macros.jl")
+include("../src/rt.jl")
 
 function test_parse_command_args()
   arg = parse_arg(:((from::String="<def>", short="-f", long="--from")))
@@ -22,13 +23,18 @@ function test_parse_optional()
 end
 
 function test_valency()
-  @test 0 == _valency(:Bool)
-  @test 1 == _valency(:String)
-  @test 1 == _valency(:Int)
+  dummy = convert(String, "")
 
-  @test -1 == _valency(:(Union(Bool, Nothing)))
-  @test -1 == _valency(:(Union(String, Nothing)))
-  @test -1 == _valency(:(Union(Int, Nothing)))
+  @test 0 == valency(Bool)
+  @test 1 == valency(String)
+  @test 1 == valency(Int)
+  @test 1 == valency(Int8)
+  @test 1 == valency(Uint8)
+  @test 1 == valency(Float64)
+
+  @test 0 == valency(Union(Bool, Nothing))
+  @test 1 == valency(Union(String, Nothing))
+  @test 1 == valency(Union(Int, Nothing))
 end
 
 test_parse_command_args()

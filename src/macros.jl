@@ -62,9 +62,8 @@ end
 function _gen_valency(t_sym, args)
   cases = (Expr, Expr)[]
   for a in args
-    v = _valency(a.typ)
-    if 0 <= v
-      push!(cases, (_match_expr(a), quote $v end))
+    if _is_whitelisted_type(a.typ)
+      push!(cases, (_match_expr(a), quote args.valency($(a.typ)) end))
     else
       push!(cases, (:(0 < (v=args.valency($(a.typ), arg))), quote v end))
     end
@@ -78,13 +77,12 @@ function _gen_valency(t_sym, args)
 end
 
 # Generate update!(o::ArgType, args::Array{String, 1})
-function _gen_update(t_sym, args)
+function _gen_update(t_sym, _args)
   cases = (Expr, Expr)[]
   fallovers = Expr[]
-  for a in args
-    parser = _parser(a.typ)
-    if parser != nothing
-      push!(cases, (_match_expr(a), quote o.$(a.sym) = $(parser)(tail) end))
+  for a in _args
+    if _is_whitelisted_type(a.typ)
+      push!(cases, (_match_expr(a), quote o.$(a.sym) = args.parse($(a.typ), tail) end))
     else
       push!(fallovers, quote updated |= args.update!(o.$(a.sym), _args) end)
     end
@@ -170,36 +168,6 @@ function parse_arg(expr::Expr)
   Arg(sym, typ, matches, default, optional)
 end
 
-# TODO use args.valency(::Type{T}) :: Int
-function _valency(typ)
-  if typ==:Bool
-    0
-  elseif typ==:String || typ==:Int || typ==:Float16 || typ==:Float32 || typ==:Float64
-    1
-  else
-    -1
-  end
-end
-
-# TODO use parse(::Type{T}, Array{String, 1}) :: T
-function _parser(typ)
-  if typ == :Bool
-    :(args.parse_bool)
-  elseif typ == :String
-    :(args.parse_string)
-  elseif typ == :Int
-    :(args.parse_int)
-  elseif typ == :Float16
-    :(args.parse_f16)
-  elseif typ == :Float32
-    :(args.parse_f32)
-  elseif typ == :Float64
-    :(args.parse_f64)
-  else
-    nothing
-  end
-end
-
 function _match_expr(a::Arg)
   if length(a.matches) == 1
     :(arg == $(a.matches[1]))
@@ -233,6 +201,14 @@ function _parse_sym(expr)
 end
 
 _typ(a) = a.optional ? a.typ : :(Union($(a.typ), Nothing))
+
+_whitelisted_type = Set{Symbol}([
+  :String, :ASCIIString, :UTF8String,
+  :Bool,
+  :Int, :Int8, :Int16, :Int32, :Int64,
+  :Float16, :Float32, :Float64
+])
+_is_whitelisted_type(t::Symbol) = in(t, _whitelisted_type)
 
 # push [v]alue to [c]ollection if value != nothing
 function _push_nonempty!(c, v)

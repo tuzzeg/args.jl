@@ -85,21 +85,43 @@ end
 # Runtime
 #
 
-parse_string(args::Array{String, 1}) = args[1]
-parse_int(args::Array{String, 1}) = int(args[1])
-parse_bool(args::Array{String, 1}) = true
-parse_f16(args::Array{String, 1}) = parsefloat(Float16, args[1])
-parse_f32(args::Array{String, 1}) = parsefloat(Float32, args[1])
-parse_f64(args::Array{String, 1}) = parsefloat(Float64, args[1])
+parse{T<:String}(::Type{T}, args::Array{String, 1}) = args[1]
+parse{T<:Signed}(::Type{T}, args::Array{String, 1}) = parseint(T, args[1])
+parse{T<:Unsigned}(::Type{T}, args::Array{String, 1}) = parseint(T, args[1])
+parse(::Type{Bool}, args::Array{String, 1}) = true
+parse{T<:FloatingPoint}(::Type{T}, args::Array{String, 1}) = parsefloat(T, args[1])
 
-valency(::Type{String}, arg::String) = 1
-valency(::Type{Int}, arg::String) = 1
-valency(::Type{Bool}, arg::String) = 0
-valency{T<:FloatingPoint}(::Type{T}, arg::String) = 1
+function parse(u::UnionType, args::Array{String, 1})
+  if length(u.types) == 2 && is(u.types[2], Nothing)
+    parse(u.types[1], args)
+  elseif length(u.types) == 2 && is(u.types[1], Nothing)
+    parse(u.types[2], args)
+  else
+    false
+  end
+end
 
-function valency(u::Type{UnionType}, arg::String)
+valency{T<:String}(::Type{T}) = 1
+valency{T<:Signed}(::Type{T}) = 1
+valency{T<:Unsigned}(::Type{T}) = 1
+valency{T<:FloatingPoint}(::Type{T}) = 1
+valency(::Type{Bool}) = 0
+
+function valency(u::UnionType)
+  if length(u.types) == 2 && is(u.types[2], Nothing)
+    valency(u.types[1])
+  elseif length(u.types) == 2 && is(u.types[1], Nothing)
+    valency(u.types[2])
+  else
+    -1
+  end
+end
+
+function valency(u::UnionType, arg::String)
   if length(u.types) == 2 && is(u.types[2], Nothing)
     valency(u.types[1], arg)
+  elseif length(u.types) == 2 && is(u.types[1], Nothing)
+    valency(u.types[2], arg)
   else
     -1
   end
